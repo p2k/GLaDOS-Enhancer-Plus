@@ -25,6 +25,7 @@ Features
 - Instead, shows a second countdown next to it, based on the percentage done and the time passed with linear progression
 - Also shows the time difference between the official default release date and the calculated release date
 - Highlights the current community focus
+- **NEW in v1.1**: Removes the banner on top of the page
 
 Installation Instructions
 -------------------------

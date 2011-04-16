@@ -3,7 +3,7 @@
 // @namespace https://github.com/p2k/
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
-// @version 1.0
+// @version 1.1
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -66,6 +66,10 @@ var GLaDOSEnhancerPlusInit = function () {
     // Initial setup
     
     installJSONPDroplet();
+    
+    // v1.1: Remove the top banner
+    jQuery('#banner').remove();
+	jQuery('#content').css('margin-top','-3px');
     
     var isWebkit = jQuery.browser.webkit;
     
