@@ -9,6 +9,8 @@
 
 // Copyright (c) 2011, Aubron Wood
 // Copyright (c) 2011, Patrick "p2k" Schneider
+// Additional contributions: Aaron Broder
+//
 // Released under the GPL license
 // http://www.gnu.org/copyleft/gpl.html
 

@@ -16,6 +16,8 @@ The Project has been initiated by Aubron and p2k, both participators in the `Val
 
 For the first release, the two scripts developed by the initiators will be merged. After that, more features will be added as we see fit or as your suggestions fly in.
 
+**If I'm on my computer, you can reach me via IRC on `#ValveARG2 <irc://irc.gamesurge.net/ValveARG2>`_ at gamesurge.net; you can still file in an issue if I'm offline, so I can read it later. I also use the IRC to announce new versions as soon as they're out.**
+
 Features
 --------
 
@@ -26,7 +28,8 @@ Features
 - Also shows the time difference between the official default release date and the calculated release date
 - Highlights the current community focus
 - v1.1: Removes the banner on top of the page
-- **NEW in v1.2**: Shows estimated times for each game
+- v1.2: Shows estimated times for each game
+- **NEW in v1.2.2**: Introduced some fixes to increase compatibility across users, browsers and operating systems
 
 Installation Instructions
 -------------------------
@@ -64,4 +67,4 @@ Notes on the game timers
 
 The timers will stop on 00:00:00 (i.e. they won't show negative values).
 
-Also, if a timer is larger than the actual release time it will read *STALLED*.
+Also, if a timer is larger than the actual release time it will read **STALLED**.
