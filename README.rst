@@ -16,7 +16,7 @@ The Project has been initiated by Aubron and p2k, both participators in the `Val
 
 For the first release, the two scripts developed by the initiators will be merged. After that, more features will be added as we see fit or as your suggestions fly in.
 
-**If I'm on my computer, you can reach me via IRC on** `#ValveARG2 <irc://irc.gamesurge.net/ValveARG2>`_ **at gamesurge.net; you can still file in an issue if I'm offline, so I can read it later. I also use the IRC to announce new versions as soon as they're out.**
+**If I'm on my computer, you can reach me via IRC on channel** `ValveARG2 <irc://irc.gamesurge.net/ValveARG2>`_ **at gamesurge.net; you can still file in an issue if I'm offline, so I can read it later. I also use the IRC to announce new versions as soon as they're out.**
 
 Features
 --------
