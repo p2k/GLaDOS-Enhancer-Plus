@@ -5,8 +5,6 @@
 
 # For this script you'd need an apache http server with mod_python
 
-# Note: This script is kept for compatibility in case someone still uses the old version of the script
-
 __all__ = ["index"]
 
 import simplejson, os.path
@@ -24,7 +22,12 @@ def index(req, jsonp=""):
     else:
         data = {}
     
-    rdata = {"current_focus": data.get("focus", 0)}
+    rdata = {
+        "focus": data.get("focus", 0),
+        "overallRate": data.get("overallRate", 0),
+        "gameRates": data.get("gameRates", {}),
+        "potatoRate": data.get("potatoRate", 0),
+    }
     
     return "%s(%s)" % (jsonp, simplejson.dumps(rdata))
 
