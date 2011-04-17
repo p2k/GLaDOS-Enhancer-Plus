@@ -3,7 +3,7 @@
 // @namespace https://github.com/p2k/
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
-// @version 1.2
+// @version 1.2.1
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -137,8 +137,8 @@ var GLaDOSEnhancerPlusInit = function () {
             color: "#4D4D4D",
             position: "absolute",
             top: (isWebkit || isOpera ? 20 : 18),
-            left: 542,
-            width: 80,
+            left: 538,
+            width: 84,
             height: 14
         });
         elt.children(".game_cpus").after(gameETADiv);
