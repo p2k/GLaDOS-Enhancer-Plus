@@ -4,7 +4,7 @@
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
 // @include http://aperturescience.com/glados@home/
-// @version 1.2.2
+// @version 1.2.99
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -42,17 +42,24 @@ var parseTime = function (str) {
     return remainHours * 3600 + remainMinutes * 60 + remainSeconds;
 };
 
-// v1.2: Better number formatting
+// v1.2: Better number formatting / v1.3: More improvements
 
-var formatPercent = function (value) { // Range of value is 0 to 1!
-    var s = "" + (Math.round(value*10000)/100); // Round to two decimals
+var formatFloat = function (value, decimals) {
+    var f = Math.pow(10, decimals);
+    var s = "" + (Math.round(value*f)/f); // Round to given decimals
     var spl = s.split("."); // Split to check for padding
     if (spl.length == 1)
-        return s + ".00%";
-    else if (spl[1].length == 1)
-        return s + "0%";
+        return s + "." + (new Array(decimals+1).join("0"));
+    else if (spl[1].length == decimals)
+        return s;
+    else if (spl[1].length > decimals)
+        return s.substr(0, s.length - (spl[1].length - decimals));
     else
-        return s + "%";
+        return s + (new Array(decimals - spl[1].length + 1).join("0"));
+};
+
+var formatPercent = function (value) { // Range of value is 0 to 1!
+    return formatFloat(value*100, 2) + "%";
 };
 
 // Quick and dirty JSONP bridge to work around same-origin restrictions
@@ -93,15 +100,16 @@ var GLaDOSEnhancerPlusInit = function () {
     var isWebkit = jQuery.browser.webkit;
     var isOpera = jQuery.browser.opera;
     
-    var percentEndTimeLocal;
-    var projectedEndTime;
-    var gameEndTimes = {};
+    var overallRate, gameRates, potatoRate;
+    var lastOverallProgress, lastGameProgress = {};
+    
+    var overallEndTime, projectedEndTime, gameEndTimes = {};
     var currentCommunityFocus = 0;
     
     var overallProgressBar = jQuery("#overall_progress_bar");
     
-    var percentDiv = jQuery("<div></div>");
-    percentDiv.css({
+    var overallProgressDiv = jQuery("<div></div>");
+    overallProgressDiv.css({
         "font-family": "Helvetica,Arial,sans-serif",
         "font-size": "16px",
         "text-align": "right",
@@ -112,15 +120,15 @@ var GLaDOSEnhancerPlusInit = function () {
         width: 75,
         height: 15
     });
-    jQuery("#content").append(percentDiv);
+    jQuery("#content").append(overallProgressDiv);
     
     jQuery("#game_rows").children(".game_row").each(function (index, elt) {
         elt = jQuery(elt);
-        var gameId = parseInt(elt.attr("id").split("_")[2]);
+        var gameId = elt.attr("id").split("_")[2];
         gameEndTimes[gameId] = -1;
-        var gamePercentDiv = jQuery("<div></div>");
-        gamePercentDiv.attr("class", "game_progress_value");
-        gamePercentDiv.css({
+        var gameProgressDiv = jQuery("<div></div>");
+        gameProgressDiv.attr("class", "game_progress_value");
+        gameProgressDiv.css({
             "font-family": "Helvetica,Arial,sans-serif",
             "font-size": "11px",
             "text-align": "right",
@@ -131,7 +139,21 @@ var GLaDOSEnhancerPlusInit = function () {
             width: 50,
             height: 11
         });
-        elt.children(".game_progress").after(gamePercentDiv);
+        elt.children(".game_progress").after(gameProgressDiv);
+        var gameRateDiv = jQuery("<div></div>");
+        gameRateDiv.attr("id", "game_rate_" + gameId);
+        gameRateDiv.css({
+            "font-family": "verdana,sans-serif",
+            "font-size": "10px",
+            color: "#4D4D4D",
+            position: "absolute",
+            top: (isWebkit || isOpera ? 20 : 18),
+            left: 430,
+            width: 110,
+            height: 14
+        });
+        gameRateDiv.text("RATE:");
+        elt.children(".game_cpus").after(gameRateDiv);
         var gameETADiv = jQuery("<div></div>");
         gameETADiv.attr("id", "game_eta_" + gameId);
         gameETADiv.css({
@@ -144,7 +166,8 @@ var GLaDOSEnhancerPlusInit = function () {
             width: 84,
             height: 14
         });
-        elt.children(".game_cpus").after(gameETADiv);
+        gameETADiv.text("ETA:");
+        gameRateDiv.after(gameETADiv);
     });
     
     var secondClock = jQuery("<div></div>");
@@ -159,87 +182,109 @@ var GLaDOSEnhancerPlusInit = function () {
         width: 160,
         height: 33
     });
+    secondClock.html("GDE+ 1.3");
     jQuery("#content").append(secondClock);
     
-    var deltaTimeDiv = jQuery("<div></div>");
-    deltaTimeDiv.css({
+    var deltaAndRateDiv = jQuery("<div></div>");
+    deltaAndRateDiv.css({
         "font-family": "Helvetica,Arial,sans-serif",
         "font-size": "16px",
         color: "#4D4D4D",
         position: "absolute",
         top: (isWebkit ? 497 : (isOpera ? 494 : 493)),
         left: (isWebkit || isOpera ? 655 : 650),
-        width: 120,
+        width: 220,
         height: 15
     });
-    jQuery("#content").append(deltaTimeDiv);
+    deltaAndRateDiv.text("Please wait, loading data...");
+    jQuery("#content").append(deltaAndRateDiv);
+    
+    var updateLabelDiv = jQuery("<div></div>");
+    updateLabelDiv.css({
+        "font-family": "Helvetica,Arial,sans-serif",
+        "font-size": "10px",
+        "text-align": "right",
+        color: "#888888",
+        position: "absolute",
+        top: (isWebkit ? 641 : 642),
+        left: 273,
+        width: 74,
+        height: 10
+    });
+    updateLabelDiv.text("AUTO UPDATE");
+    jQuery("#content").append(updateLabelDiv);
     
     var updateTimerDiv = jQuery("<div></div>");
     updateTimerDiv.css({
         "font-family": "Helvetica,Arial,sans-serif",
-        "font-size": "11px",
+        "font-size": "12px",
+        "font-weight": "bold",
         color: "#4D4D4D",
         position: "absolute",
-        top: (isWebkit ? 501 : (isOpera ? 498 : 497)),
-        left: 785,
-        width: 82,
+        top: (isOpera ? 642 : 641),
+        left: 361,
+        width: 60,
         height: 12
     });
+    updateTimerDiv.text("-");
     jQuery("#content").append(updateTimerDiv);
     
     // Calculation functions
     
     var runCalculations = function () {
-        var percent = overallProgressBar.width() / 494.0;
-        
-        percentDiv.text(formatPercent(percent));
-        
+        var overallProgress = overallProgressBar.width() / 494.0;
         var timeCurrent = Math.round(new Date().getTime() / 1000);
-        var timePassed = timeCurrent - 1302883200; // Timestamp of 2011/04/15 16:00:00 UTC
-        projectedEndTime = timeCurrent + parseTime(jQuery("#clock").text());
-        var percentTimeRemaining = parseInt(timePassed / percent - timePassed);
-        var delta = percentTimeRemaining - parseTime(jQuery("#console_clock").text());
         
-        percentEndTimeLocal = percentTimeRemaining + timeCurrent;
-        
-        deltaTimeDiv.html("&#916; = " + formatTime(delta));
+        // v1.3: Only update on changes and use the rate over a sliding window of one hour
+        if (overallProgress != lastOverallProgress) {
+            var originalTimeRemaining = parseTime(jQuery("#console_clock").text());
+            var overallTimeRemaining = originalTimeRemaining;
+            projectedEndTime = timeCurrent + parseTime(jQuery("#clock").text());
+            
+            if (overallRate != 0) // No no no, we won't divide by zero!
+                overallTimeRemaining = parseInt((1.0-overallProgress)*60 / overallRate);
+            
+            var delta = overallTimeRemaining - originalTimeRemaining;
+            
+            overallEndTime = overallTimeRemaining + timeCurrent;
+            
+            overallProgressDiv.text(formatPercent(overallProgress));
+            deltaAndRateDiv.html("&#916; = " + formatTime(delta) + "&nbsp;&nbsp;&nbsp;m = " + formatFloat(overallRate*100, 3) + " %/h");
+            
+            lastOverallProgress = overallProgress;
+        }
         
         jQuery("#game_rows").children(".game_row").each(function (index, elt) {
             elt = jQuery(elt);
-            var gameId = parseInt(elt.attr("id").split("_")[2]);
-            var gamePercentDiv = elt.children(".game_progress_value");
+            var gameId = elt.attr("id").split("_")[2];
+            var gameProgressDiv = elt.children(".game_progress_value");
             var gameProgressBar = elt.children(".game_progress");
-            var gamePercent = gameProgressBar.width() / 457.0;
-            gamePercentDiv.text(formatPercent(gamePercent));
+            var gameProgress = gameProgressBar.width() / 457.0;
             
-            // v1.2: ETA calculation for the game
-            if (gamePercent == 1)
-                gameEndTimes[gameId] = -1;
-            else
-                gameEndTimes[gameId] = parseInt(timePassed / gamePercent - timePassed) + timeCurrent;
+            // v1.3: Only update on changes and use the rate over a sliding window of one hour
+            if (gameProgress != lastGameProgress[gameId]) {
+                var gameRate = gameRates[gameId];
+                gameProgressDiv.text(formatPercent(gameProgress));
+                
+                // v1.3: Display of percent rates per game
+                if (gameProgress == 1)
+                    jQuery("#game_rate_" + gameId).text("");
+                else
+                    jQuery("#game_rate_" + gameId).text("RATE: " + formatFloat(gameRate*100, 3) + " %/h");
+            
+                // v1.2: ETA calculation for the game
+                if (gameProgress == 1)
+                    gameEndTimes[gameId] = -1;
+                else {
+                    if (gameRate == 0) // No no no, we won't divide by zero!
+                        gameEndTimes[gameId] = projectedEndTime + 3600;
+                    else
+                        gameEndTimes[gameId] = parseInt((1.0-gameProgress)*60 / gameRate) + timeCurrent;
+                }
+                lastGameProgress[gameId] = gameProgress;
+            }
         });
     };
-    
-    runCalculations();
-    
-    // Current focus
-    
-    // v1.2: Changed to get the community focus only once per page reload (set by Valve to 5 mins)
-    
-    var setCurrentCommunityFocus = function () {
-        if (currentCommunityFocus != 0) {
-            var gameRow = jQuery("#game_row_" + currentCommunityFocus);
-            gameRow.children('.game_progress').css('background-color', '#FDEB29');
-            gameRow.children('.game_cpus').append(' **CURRENT FOCUS**');
-        }
-    };
-    
-    var storeCurrentCommunityFocus = function (data) {
-        currentCommunityFocus = data.current_focus;
-        setCurrentCommunityFocus();
-    };
-    
-    useJSONPDroplet("http://www.p2k-network.org/py/glados_current_focus.py", storeCurrentCommunityFocus);
     
     // Ajax Updater
     
@@ -292,12 +337,12 @@ var GLaDOSEnhancerPlusInit = function () {
     
     var refreshClocks = function () {
         var timestamp = Math.round(new Date().getTime() / 1000);
-        var secsRemaining = percentEndTimeLocal - timestamp;
+        var secsRemaining = overallEndTime - timestamp;
         secondClock.text("/ " + formatTime(secsRemaining));
         
         jQuery("#game_rows").children(".game_row").each(function (index, elt) {
             elt = jQuery(elt);
-            var gameId = parseInt(elt.attr("id").split("_")[2]);
+            var gameId = elt.attr("id").split("_")[2];
             if (gameEndTimes[gameId] < 0) {
                 jQuery("#game_eta_" + gameId).text("");
                 return;
@@ -315,18 +360,45 @@ var GLaDOSEnhancerPlusInit = function () {
         });
         
         if (nextUpdateCounter > 0) {
-            updateTimerDiv.text("Update: " + nextUpdateCounter);
+            updateTimerDiv.text("" + nextUpdateCounter);
             nextUpdateCounter--;
         }
         else if (nextUpdateCounter == 0) {
-            updateTimerDiv.text("Update: pending");
+            updateTimerDiv.text("running");
             nextUpdateCounter = -1;
             runAjaxUpdate();
         }
     };
     
-    refreshClocks();
-    window.setInterval(refreshClocks, 1000);
+    // Current focus and rates
+    
+    // v1.2: Changed to get the community focus only once per page reload (set by Valve to 5 mins)
+    
+    var setCurrentCommunityFocus = function () {
+        if (currentCommunityFocus != 0) {
+            var gameRow = jQuery("#game_row_" + currentCommunityFocus);
+            gameRow.children('.game_progress').css('background-color', '#FDEB29');
+            gameRow.children('.game_cpus').append(' **CURRENT FOCUS**');
+        }
+    };
+    
+    // v1.3: Added retrieval of average rates (over a sliding window of one hour)
+    
+    var processGLaDOSdata = function (data) {
+        currentCommunityFocus = data.focus;
+        overallRate = data.overallRate;
+        gameRates = data.gameRates;
+        potatoRate = data.potatoRate;
+        
+        // Initiation here
+        runCalculations();
+        setCurrentCommunityFocus();
+        
+        refreshClocks();
+        window.setInterval(refreshClocks, 1000);
+    };
+    
+    useJSONPDroplet("http://www.p2k-network.org/py/glados_data.py", processGLaDOSdata);
     
     // The original script doesn't do this correctly
     
