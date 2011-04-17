@@ -3,7 +3,7 @@
 // @namespace https://github.com/p2k/
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
-// @version 1.1
+// @version 1.2
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -11,7 +11,10 @@
 // Released under the GPL license
 // http://www.gnu.org/copyleft/gpl.html
 
-// Common functions for formatting/parsing time
+// GLaDOS - how do you like this? :P
+
+
+// Common functions for formatting/parsing
 
 var formatTime = function (seconds) {
     var sgn = "";
@@ -34,7 +37,20 @@ var parseTime = function (str) {
     var remainMinutes = parseInt(spl[1].charAt(0) == "0" ? spl[1].charAt(1) : spl[1]);
     var remainSeconds = parseInt(spl[2].charAt(0) == "0" ? spl[2].charAt(1) : spl[2]);
     return remainHours * 3600 + remainMinutes * 60 + remainSeconds;
-}
+};
+
+// v1.2: Better number formatting
+
+var formatPercent = function (value) { // Range of value is 0 to 1!
+    var s = "" + (Math.round(value*10000)/100); // Round to two decimals
+    var spl = s.split("."); // Split to check for padding
+    if (spl.length == 1)
+        return s + ".00%";
+    else if (spl[1].length == 1)
+        return s + "0%";
+    else
+        return s + "%";
+};
 
 // Quick and dirty JSONP bridge to work around same-origin restrictions
 // It's so simple, yet it works incredibly well...
@@ -72,8 +88,12 @@ var GLaDOSEnhancerPlusInit = function () {
 	jQuery('#content').css('margin-top','-3px');
     
     var isWebkit = jQuery.browser.webkit;
+    var isOpera = jQuery.browser.opera;
     
     var percentEndTimeLocal;
+    var projectedEndTime;
+    var gameEndTimes = {};
+    var currentCommunityFocus = 0;
     
     var overallProgressBar = jQuery("#overall_progress_bar");
     
@@ -93,6 +113,8 @@ var GLaDOSEnhancerPlusInit = function () {
     
     jQuery("#game_rows").children(".game_row").each(function (index, elt) {
         elt = jQuery(elt);
+        var gameId = parseInt(elt.attr("id").split("_")[2]);
+        gameEndTimes[gameId] = -1;
         var gamePercentDiv = jQuery("<div></div>");
         gamePercentDiv.attr("class", "game_progress_value");
         gamePercentDiv.css({
@@ -100,13 +122,26 @@ var GLaDOSEnhancerPlusInit = function () {
             "font-size": "11px",
             "text-align": "right",
             color: "#FFFFFF",
-            position: "relative",
-            top: (isWebkit ? 2 : 3),
-            left: 448,
+            position: "absolute",
+            top: (isWebkit ? 2 : (isOpera ? 4 : 3)),
+            left: 563,
             width: 50,
             height: 11
         });
         elt.children(".game_progress").after(gamePercentDiv);
+        var gameETADiv = jQuery("<div></div>");
+        gameETADiv.attr("id", "game_eta_" + gameId);
+        gameETADiv.css({
+            "font-family": "verdana,sans-serif",
+            "font-size": "10px",
+            color: "#4D4D4D",
+            position: "absolute",
+            top: (isWebkit || isOpera ? 20 : 18),
+            left: 542,
+            width: 80,
+            height: 14
+        });
+        elt.children(".game_cpus").after(gameETADiv);
     });
     
     var secondClock = jQuery("<div></div>");
@@ -129,8 +164,8 @@ var GLaDOSEnhancerPlusInit = function () {
         "font-size": "16px",
         color: "#4D4D4D",
         position: "absolute",
-        top: (isWebkit ? 497 : 493),
-        left: (isWebkit ? 655 : 650),
+        top: (isWebkit ? 497 : (isOpera ? 494 : 493)),
+        left: (isWebkit || isOpera ? 655 : 650),
         width: 120,
         height: 15
     });
@@ -142,7 +177,7 @@ var GLaDOSEnhancerPlusInit = function () {
         "font-size": "11px",
         color: "#4D4D4D",
         position: "absolute",
-        top: (isWebkit ? 501 : 497),
+        top: (isWebkit ? 501 : (isOpera ? 498 : 497)),
         left: 785,
         width: 82,
         height: 12
@@ -154,10 +189,11 @@ var GLaDOSEnhancerPlusInit = function () {
     var runCalculations = function () {
         var percent = overallProgressBar.width() / 494.0;
         
-        percentDiv.text((Math.round(percent*10000)/100) + "%");
+        percentDiv.text(formatPercent(percent));
         
         var timeCurrent = Math.round(new Date().getTime() / 1000);
         var timePassed = timeCurrent - 1302883200; // Timestamp of 2011/04/15 16:00:00 UTC
+        projectedEndTime = timeCurrent + parseTime(jQuery("#clock").text());
         var percentTimeRemaining = parseInt(timePassed / percent - timePassed);
         var delta = percentTimeRemaining - parseTime(jQuery("#console_clock").text());
         
@@ -167,10 +203,17 @@ var GLaDOSEnhancerPlusInit = function () {
         
         jQuery("#game_rows").children(".game_row").each(function (index, elt) {
             elt = jQuery(elt);
+            var gameId = parseInt(elt.attr("id").split("_")[2]);
             var gamePercentDiv = elt.children(".game_progress_value");
             var gameProgressBar = elt.children(".game_progress");
             var gamePercent = gameProgressBar.width() / 457.0;
-            gamePercentDiv.text((Math.round(gamePercent*10000)/100) + "%");
+            gamePercentDiv.text(formatPercent(gamePercent));
+            
+            // v1.2: ETA calculation for the game
+            if (gamePercent == 1)
+                gameEndTimes[gameId] = -1;
+            else
+                gameEndTimes[gameId] = parseInt(timePassed / gamePercent - timePassed) + timeCurrent;
         });
     };
     
@@ -178,17 +221,22 @@ var GLaDOSEnhancerPlusInit = function () {
     
     // Current focus
     
-    var processCurrentFocusUpdate = function (data) {
-        var gameRow = jQuery("#game_row_" + data.current_focus);
-        gameRow.children('.game_progress').css('background-color','#FDEB29');
-        gameRow.children('.game_cpus').append(' **CURRENT FOCUS**');
+    // v1.2: Changed to get the community focus only once per page reload (set by Valve to 5 mins)
+    
+    var setCurrentCommunityFocus = function () {
+        if (currentCommunityFocus != 0) {
+            var gameRow = jQuery("#game_row_" + currentCommunityFocus);
+            gameRow.children('.game_progress').css('background-color', '#FDEB29');
+            gameRow.children('.game_cpus').append(' **CURRENT FOCUS**');
+        }
     };
     
-    var runCurrentFocusUpdate = function () {
-        useJSONPDroplet("http://www.p2k-network.org/py/glados_current_focus.py", processCurrentFocusUpdate);
+    var storeCurrentCommunityFocus = function (data) {
+        currentCommunityFocus = data.current_focus;
+        setCurrentCommunityFocus();
     };
     
-    runCurrentFocusUpdate();
+    useJSONPDroplet("http://www.p2k-network.org/py/glados_current_focus.py", storeCurrentCommunityFocus);
     
     // Ajax Updater
     
@@ -223,8 +271,8 @@ var GLaDOSEnhancerPlusInit = function () {
         // Update calculations
         runCalculations();
         
-        // Then run the current focus updater
-        runCurrentFocusUpdate();
+        // v1.2: Set the cached community focus
+        setCurrentCommunityFocus();
         
         nextUpdateCounter = 30;
     };
@@ -237,11 +285,31 @@ var GLaDOSEnhancerPlusInit = function () {
         });
     };
     
-    // Second clock refresh / Update timer refresh / Ajax launch
+    // Second clock refresh / v1.2: Game clocks refresh / Update timer refresh / Ajax launch
     
     var refreshClocks = function () {
-        var secsRemaining = percentEndTimeLocal - Math.round(new Date().getTime() / 1000);
+        var timestamp = Math.round(new Date().getTime() / 1000);
+        var secsRemaining = percentEndTimeLocal - timestamp;
         secondClock.text("/ " + formatTime(secsRemaining));
+        
+        jQuery("#game_rows").children(".game_row").each(function (index, elt) {
+            elt = jQuery(elt);
+            var gameId = parseInt(elt.attr("id").split("_")[2]);
+            if (gameEndTimes[gameId] < 0) {
+                jQuery("#game_eta_" + gameId).text("");
+                return;
+            }
+            
+            var gameEndTime = gameEndTimes[gameId];
+            var gameSecsRemaining = gameEndTime - timestamp;
+            if (gameSecsRemaining < 0)
+                gameSecsRemaining = 0;
+            
+            if (gameEndTime > projectedEndTime)
+                jQuery("#game_eta_" + gameId).html("ETA: <b>STALLED</b>");
+            else
+                jQuery("#game_eta_" + gameId).text("ETA: " + formatTime(gameSecsRemaining));
+        });
         
         if (nextUpdateCounter > 0) {
             updateTimerDiv.text("Update: " + nextUpdateCounter);
@@ -263,7 +331,7 @@ var GLaDOSEnhancerPlusInit = function () {
     
 };
 
-// v1.3: Included jQuery for Google Chrome and other browsers
+// Included jQuery for Google Chrome and other browsers
 
 /*!
  * jQuery JavaScript Library v1.5.2

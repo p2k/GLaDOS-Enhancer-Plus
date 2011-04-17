@@ -25,12 +25,13 @@ Features
 - Instead, shows a second countdown next to it, based on the percentage done and the time passed with linear progression
 - Also shows the time difference between the official default release date and the calculated release date
 - Highlights the current community focus
-- **NEW in v1.1**: Removes the banner on top of the page
+- v1.1: Removes the banner on top of the page
+- **NEW in v1.2**: Shows estimated times for each game
 
 Installation Instructions
 -------------------------
 
-This Userscript will work with Google Chrome, Firefox and Opera.
+This Userscript will work with Google Chrome, Firefox, Opera and Safari (Mac).
 
 *These instructions will work for other scripts too. Just open the correct URL to the script of your choice instead of clicking the hinted links in the following text. Note, however, that not all scripts will work in all browsers like ours. If in doubt, use Firefox which has the most support for Userscripts.*
 
@@ -46,6 +47,10 @@ You need the `Greasemonkey add-on <https://addons.mozilla.org/firefox/addon/grea
 
 For this browser, you need to create an empty folder somewhere on your computer (e.g. make a folder called "Userscripts" in your documents folder) which should hold all Userscripts. After you've done that, `download our script <https://github.com/p2k/GLaDOS-Enhancer-Plus/raw/master/glados_enhancer_plus.user.js>`_ and save it into that folder. Next, open the JavaScript options dialog (O menu -> Settings (or Preferences on Mac) -> Advanced -> Content -> JavaScript options) and select your created folder there. To uninstall, just remove our script from your folder.
 
+**Safari (Mac only)**
+
+To use Userscripts in Safari you need a little hack, because Apple says Userscripts are not good for you. If you are of a different opinion, go ahead and install `GreaseKit <http://8-p.info/greasekit/>`_ (you need to install SIMBL first, read the instructions!). After you've restarted Safari, a new GreaseKit menu will appear next to "Window" in the menu bar. From this menu you can deactivate or uninstall any scripts later. Now click `this link <https://github.com/p2k/GLaDOS-Enhancer-Plus/raw/master/glados_enhancer_plus.user.js>`_, watch the script code appearing and after a second you'll be asked if you want to install the script.
+
 **All browsers**
 
 At this point, our script should have been installed and is ready to run. Hit up the official `GLaDOS@Home status page <http://www.aperturescience.com/glados@home/>`_ to see it in action.
@@ -53,3 +58,10 @@ At this point, our script should have been installed and is ready to run. Hit up
 **And one last thing**
 
 The script might change at any time within the next hours (well, until the project will eventually die after the release of Portal 2). Revisit this site every now and then to look for updates.
+
+Notes on the game timers
+------------------------
+
+The timers will stop on 00:00:00 (i.e. they won't show negative values).
+
+Also, if a timer is larger than the actual release time it will read *STALLED*.
