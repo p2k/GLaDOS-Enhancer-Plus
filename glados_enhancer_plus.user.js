@@ -3,7 +3,8 @@
 // @namespace https://github.com/p2k/
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
-// @version 1.2.1
+// @include http://aperturescience.com/glados@home/
+// @version 1.2.2
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
