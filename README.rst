@@ -29,7 +29,9 @@ Features
 - Highlights the current community focus
 - v1.1: Removes the banner on top of the page
 - v1.2: Shows estimated times for each game
-- **NEW in v1.2.2**: Introduced some fixes to increase compatibility across users, browsers and operating systems
+- v1.2.2: Introduced some fixes to increase compatibility across users, browsers and operating systems
+- **NEW in v1.3**: Better estimated values over a sliding window of one hour
+- **NEW in v1.3**: Potato milestone timer with editable target amount
 
 Installation Instructions
 -------------------------

@@ -4,7 +4,7 @@
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
 // @include http://aperturescience.com/glados@home/
-// @version 1.2.99
+// @version 1.3
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -87,6 +87,23 @@ var useJSONPDroplet = function (url, callback) {
     document.body.appendChild(script);
 };
 
+// v1.3: Simplistic JS stylesheet object to string renderer
+
+var renderStylesheet = function (obj) {
+    var out = "";
+    jQuery.each(obj, function (rule, styles) {
+        out += "." + rule + " {\n";
+        jQuery.each(styles, function (name, value) {
+            if (typeof value == "number")
+                out += "    " + name + ": " + value + "px;\n";
+            else
+                out += "    " + name + ": " + value + ";\n";
+        });
+        out += "}\n\n";
+    });
+    return out;
+};
+
 var GLaDOSEnhancerPlusInit = function () {
     
     // Initial setup
@@ -100,37 +117,32 @@ var GLaDOSEnhancerPlusInit = function () {
     var isWebkit = jQuery.browser.webkit;
     var isOpera = jQuery.browser.opera;
     
-    var overallRate, gameRates, potatoRate;
-    var lastOverallProgress, lastGameProgress = {};
+    var overallRate, gameRates, potatoRate, potatoCount;
+    var lastOverallProgress, lastGameProgress = {}, lastPotatoTarget;
     
-    var overallEndTime, projectedEndTime, gameEndTimes = {};
+    var overallEndTime, projectedEndTime, gameEndTimes = {}, potatoEndTime;
     var currentCommunityFocus = 0;
     
     var overallProgressBar = jQuery("#overall_progress_bar");
+    var potatoCountDiv = jQuery("#potato_count");
     
-    var overallProgressDiv = jQuery("<div></div>");
-    overallProgressDiv.css({
-        "font-family": "Helvetica,Arial,sans-serif",
-        "font-size": "16px",
-        "text-align": "right",
-        color: "#4D4D4D",
-        position: "absolute",
-        top: (isWebkit ? 441 : 442),
-        left: 779,
-        width: 75,
-        height: 15
-    });
-    jQuery("#content").append(overallProgressDiv);
+    // v1.3: Use a stylesheet to reduce visual clutter and to have them at a central place
     
-    jQuery("#game_rows").children(".game_row").each(function (index, elt) {
-        elt = jQuery(elt);
-        var gameId = elt.attr("id").split("_")[2];
-        gameEndTimes[gameId] = -1;
-        var gameProgressDiv = jQuery("<div></div>");
-        gameProgressDiv.attr("class", "game_progress_value");
-        gameProgressDiv.css({
+    var objStyleSheet = {
+        gdep_overall_progress: {
             "font-family": "Helvetica,Arial,sans-serif",
-            "font-size": "11px",
+            "font-size": 16,
+            "text-align": "right",
+            color: "#4D4D4D",
+            position: "absolute",
+            top: (isWebkit ? 441 : 442),
+            left: 779,
+            width: 75,
+            height: 15
+        },
+        gdep_game_progress: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 11,
             "text-align": "right",
             color: "#FFFFFF",
             position: "absolute",
@@ -138,96 +150,169 @@ var GLaDOSEnhancerPlusInit = function () {
             left: 563,
             width: 50,
             height: 11
-        });
-        elt.children(".game_progress").after(gameProgressDiv);
-        var gameRateDiv = jQuery("<div></div>");
-        gameRateDiv.attr("id", "game_rate_" + gameId);
-        gameRateDiv.css({
+        },
+        gdep_game_rate: {
             "font-family": "verdana,sans-serif",
-            "font-size": "10px",
+            "font-size": 10,
             color: "#4D4D4D",
             position: "absolute",
             top: (isWebkit || isOpera ? 20 : 18),
             left: 430,
             width: 110,
             height: 14
-        });
-        gameRateDiv.text("RATE:");
-        elt.children(".game_cpus").after(gameRateDiv);
-        var gameETADiv = jQuery("<div></div>");
-        gameETADiv.attr("id", "game_eta_" + gameId);
-        gameETADiv.css({
+        },
+        gdep_game_eta: {
             "font-family": "verdana,sans-serif",
-            "font-size": "10px",
+            "font-size": 10,
             color: "#4D4D4D",
             position: "absolute",
             top: (isWebkit || isOpera ? 20 : 18),
             left: 538,
             width: 84,
             height: 14
-        });
+        },
+        gdep_clock: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 32,
+            "font-weight": "bold",
+            color: "#4D4D4D",
+            position: "absolute",
+            top: 481,
+            left: 496,
+            width: 160,
+            height: 33
+        },
+        gdep_delta_rate: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 16,
+            color: "#4D4D4D",
+            position: "absolute",
+            top: (isWebkit ? 497 : (isOpera ? 494 : 493)),
+            left: (isWebkit || isOpera ? 655 : 650),
+            width: 220,
+            height: 15
+        },
+        gdep_update_label: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 10,
+            "text-align": "right",
+            color: "#888888",
+            position: "absolute",
+            top: (isWebkit ? 641 : 642),
+            left: 273,
+            width: 74,
+            height: 10
+        },
+        gdep_update_timer: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 12,
+            "font-weight": "bold",
+            color: "#4D4D4D",
+            position: "absolute",
+            top: (isOpera ? 642 : 641),
+            left: 361,
+            width: 60,
+            height: 12
+        },
+        gdep_current_focus: {
+            "background-color": "#FDEB29"
+        },
+        gdep_potato_rate: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 18,
+            "font-weight": "bold",
+            color: "#4D4D4D",
+            position: "absolute",
+            left: 507,
+            top: 1183,
+            "line-height": 39
+        },
+        gdep_potato_timer: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 18,
+            "font-weight": "bold",
+            "text-align": "right",
+            color: "#4D4D4D",
+            position: "absolute",
+            left: 627,
+            top: 1183,
+            width: 110,
+            "line-height": 39
+        },
+        gdep_potato_target: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 18,
+            "font-weight": "bold",
+            border: "0",
+            color: "#4D4D4D",
+            position: "absolute",
+            left: 742,
+            top: 1188,
+            height: 20,
+            width: 110,
+            padding: 4
+        },
+        gdep_promo: {
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 10,
+            "text-align": "center",
+            color: "#888888",
+            position: "absolute",
+            top: 1235,
+            left: 360,
+            width: 510
+        }
+    };
+    
+    var cssStylesheet = jQuery('<style type="text/css"></style>');
+    cssStylesheet.text(renderStylesheet(objStyleSheet));
+    jQuery("head").append(cssStylesheet);
+    
+    var overallProgressDiv = jQuery('<div class="gdep_overall_progress"></div>');
+    jQuery("#content").append(overallProgressDiv);
+    
+    jQuery("#game_rows").children(".game_row").each(function (index, elt) {
+        elt = jQuery(elt);
+        var gameId = elt.attr("id").split("_")[2];
+        gameEndTimes[gameId] = -1;
+        var gameProgressDiv = jQuery('<div class="gdep_game_progress"></div>');
+        elt.children(".game_progress").after(gameProgressDiv);
+        var gameRateDiv = jQuery('<div class="gdep_game_rate"></div>');
+        gameRateDiv.attr("id", "game_rate_" + gameId);
+        gameRateDiv.text("RATE:");
+        elt.children(".game_cpus").after(gameRateDiv);
+        var gameETADiv = jQuery('<div class="gdep_game_eta"></div>');
+        gameETADiv.attr("id", "game_eta_" + gameId);
         gameETADiv.text("ETA:");
         gameRateDiv.after(gameETADiv);
     });
     
-    var secondClock = jQuery("<div></div>");
-    secondClock.css({
-        "font-family": "Helvetica,Arial,sans-serif",
-        "font-size": "32px",
-        "font-weight": "bold",
-        color: "#4D4D4D",
-        position: "absolute",
-        top: 481,
-        left: 496,
-        width: 160,
-        height: 33
-    });
+    var secondClock = jQuery('<div class="gdep_clock"></div>');
     secondClock.html("GDE+ 1.3");
     jQuery("#content").append(secondClock);
     
-    var deltaAndRateDiv = jQuery("<div></div>");
-    deltaAndRateDiv.css({
-        "font-family": "Helvetica,Arial,sans-serif",
-        "font-size": "16px",
-        color: "#4D4D4D",
-        position: "absolute",
-        top: (isWebkit ? 497 : (isOpera ? 494 : 493)),
-        left: (isWebkit || isOpera ? 655 : 650),
-        width: 220,
-        height: 15
-    });
+    var deltaAndRateDiv = jQuery('<div class="gdep_delta_rate"></div>');
     deltaAndRateDiv.text("Please wait, loading data...");
     jQuery("#content").append(deltaAndRateDiv);
     
-    var updateLabelDiv = jQuery("<div></div>");
-    updateLabelDiv.css({
-        "font-family": "Helvetica,Arial,sans-serif",
-        "font-size": "10px",
-        "text-align": "right",
-        color: "#888888",
-        position: "absolute",
-        top: (isWebkit ? 641 : 642),
-        left: 273,
-        width: 74,
-        height: 10
-    });
+    var updateLabelDiv = jQuery('<div class="gdep_update_label"></div>');
     updateLabelDiv.text("AUTO UPDATE");
     jQuery("#content").append(updateLabelDiv);
     
-    var updateTimerDiv = jQuery("<div></div>");
-    updateTimerDiv.css({
-        "font-family": "Helvetica,Arial,sans-serif",
-        "font-size": "12px",
-        "font-weight": "bold",
-        color: "#4D4D4D",
-        position: "absolute",
-        top: (isOpera ? 642 : 641),
-        left: 361,
-        width: 60,
-        height: 12
-    });
+    var updateTimerDiv = jQuery('<div class="gdep_update_timer"></div>');
     updateTimerDiv.text("-");
     jQuery("#content").append(updateTimerDiv);
+    
+    var potatoRateDiv = jQuery('<div class="gdep_potato_rate"></div>');
+    jQuery("#content").append(potatoRateDiv);
+    
+    var potatoTimerDiv = jQuery('<div class="gdep_potato_timer"></div>');
+    potatoTimerDiv.text("00:00:00 to");
+    jQuery("#content").append(potatoTimerDiv);
+    
+    var promoDiv = jQuery('<div class="gdep_promo"></div>');
+    promoDiv.text("USING GLaDOS ENHANCER PLUS V1.3");
+    jQuery("#content").append(promoDiv);
     
     // Calculation functions
     
@@ -257,7 +342,7 @@ var GLaDOSEnhancerPlusInit = function () {
         jQuery("#game_rows").children(".game_row").each(function (index, elt) {
             elt = jQuery(elt);
             var gameId = elt.attr("id").split("_")[2];
-            var gameProgressDiv = elt.children(".game_progress_value");
+            var gameProgressDiv = elt.children(".gdep_game_progress");
             var gameProgressBar = elt.children(".game_progress");
             var gameProgress = gameProgressBar.width() / 457.0;
             
@@ -284,7 +369,52 @@ var GLaDOSEnhancerPlusInit = function () {
                 lastGameProgress[gameId] = gameProgress;
             }
         });
+        
+        // v1.3: Display potato rate
+        potatoRateDiv.text("@ " + formatFloat(potatoRate, 1) + " Pt/h");
     };
+    
+    // v1.3: Potato milestone timer
+    
+    var RE_POTATO_COUNT = /X *([0-9,]+)/;
+    
+    var getPotatoCount = function () {
+        var groups = RE_POTATO_COUNT.exec(potatoCountDiv.text());
+        return parseInt(groups[1].replace(/,/g, ""));
+    };
+    
+    var potatoTargetInput = jQuery('<input type="text" class="gdep_potato_target" />');
+    
+    var recalcPotatoTimer = function () {
+        var targetValue = parseInt(potatoTargetInput.val());
+        if (targetValue == lastPotatoTarget)
+            return;
+        lastPotatoTarget = targetValue;
+        var potatoesRemaining = targetValue - potatoCount;
+        
+        if (potatoRate == 0 || potatoesRemaining <= 0) {
+            potatoEndTime = 0;
+            potatoTimerDiv.text("00:00:00 to");
+        }
+        else {
+            var timeCurrent = Math.round(new Date().getTime() / 1000);
+            var secsRemaining = parseInt(potatoesRemaining*60 / potatoRate);
+            potatoEndTime = secsRemaining + timeCurrent;
+            if (potatoEndTime > projectedEndTime) {
+                potatoTimerDiv.text("too long to");
+                potatoEndTime = 0;
+            }
+            else {
+                potatoTimerDiv.text(formatTime(secsRemaining) + " to");
+            }
+        }
+    };
+    
+    potatoTargetInput.keyup(recalcPotatoTimer);
+    jQuery("#content").append(potatoTargetInput);
+    
+    potatoCount = getPotatoCount(); // Initial value
+    potatoTargetInput.val((parseInt(potatoCount/100000)+1) * 100000);
     
     // Ajax Updater
     
@@ -314,10 +444,17 @@ var GLaDOSEnhancerPlusInit = function () {
         });
         
         // Update potato count
-        jQuery("#potato_count").html(wrapped.find("#potato_count").html());
+        potatoCountDiv.html(wrapped.find("#potato_count").html());
+        var newPotatoCount = getPotatoCount();
         
         // Update calculations
         runCalculations();
+        
+        // v1.3: Update potato timer
+        if (newPotatoCount != potatoCount) {
+            potatoCount = newPotatoCount;
+            recalcPotatoTimer();
+        }
         
         // v1.2: Set the cached community focus
         setCurrentCommunityFocus();
@@ -333,7 +470,7 @@ var GLaDOSEnhancerPlusInit = function () {
         });
     };
     
-    // Second clock refresh / v1.2: Game clocks refresh / Update timer refresh / Ajax launch
+    // Second clock refresh / v1.2: Game clocks refresh / Update timer refresh / v1.3: Potato timer refresh / Ajax launch
     
     var refreshClocks = function () {
         var timestamp = Math.round(new Date().getTime() / 1000);
@@ -368,6 +505,17 @@ var GLaDOSEnhancerPlusInit = function () {
             nextUpdateCounter = -1;
             runAjaxUpdate();
         }
+        
+        if (potatoEndTime != 0) {
+            secsRemaining = potatoEndTime - timestamp;
+            if (secsRemaining <= 0) {
+                potatoTimerDiv.text("00:00:00 to");
+                potatoEndTime = 0;
+            }
+            else {
+                potatoTimerDiv.text(formatTime(secsRemaining) + " to");
+            }
+        }
     };
     
     // Current focus and rates
@@ -377,8 +525,8 @@ var GLaDOSEnhancerPlusInit = function () {
     var setCurrentCommunityFocus = function () {
         if (currentCommunityFocus != 0) {
             var gameRow = jQuery("#game_row_" + currentCommunityFocus);
-            gameRow.children('.game_progress').css('background-color', '#FDEB29');
-            gameRow.children('.game_cpus').append(' **CURRENT FOCUS**');
+            gameRow.children('.game_progress').addClass("gdep_current_focus");
+            gameRow.children('.game_cpus').append(" **CURRENT FOCUS**");
         }
     };
     
@@ -392,6 +540,7 @@ var GLaDOSEnhancerPlusInit = function () {
         
         // Initiation here
         runCalculations();
+        recalcPotatoTimer();
         setCurrentCommunityFocus();
         
         refreshClocks();
