@@ -4,12 +4,12 @@
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
 // @include http://aperturescience.com/glados@home/
-// @version 1.4.1
+// @version 1.4.90
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
 // Copyright (c) 2011, Patrick "p2k" Schneider
-// Additional contributions: Aaron Broder
+// Additional contributions: Aaron Broder, James "AltPluzF4" Martin
 //
 // Released under the GPL license
 // http://www.gnu.org/copyleft/gpl.html
@@ -62,30 +62,33 @@ var formatPercent = function (value) { // Range of value is 0 to 1!
     return formatFloat(value*100, 2) + "%";
 };
 
-// Quick and dirty JSONP bridge to work around same-origin restrictions
-// It's so simple, yet it works incredibly well...
+// v1.5: More elaborate JSONP bridge to work around same-origin restrictions
 
-var installJSONPDroplet = function () {
-    var droplet = jQuery('<div id="jsonp_droplet" style="position: absolute; top: 0; left: 0; display: none;"></div>');
-    jQuery("body").append(droplet);
-    var dropletScript = document.createElement("script");
-    dropletScript.setAttribute("type", "text/javascript");
-    dropletScript.textContent = 'function JSONPDropletCallback(data){document.getElementById("jsonp_droplet").textContent=JSON.stringify(data);};';
-    document.body.appendChild(dropletScript);
-};
-
-var useJSONPDroplet = function (url, callback) {
-    var script = document.createElement("script");
-    script.setAttribute("type", "text/javascript");
-    script.setAttribute("src", url + "?jsonp=JSONPDropletCallback");
-    script.addEventListener('load', function() {
-        var data = $("#jsonp_droplet").text();
+var _runSandboxedJSONPCounter = 0;
+var runSandboxedJSONP = function (url, callback) {
+    var serviceHatchId = "jsonp_hatch_" + _runSandboxedJSONPCounter;
+    _runSandboxedJSONPCounter++;
+    
+    var jsonpServiceHatch = jQuery('<div id="' + serviceHatchId + '" style="position:absolute;top:0;left:0;width:1px;height:1px;display:none;overflow:hidden"></div>');
+    jQuery("body").append(jsonpServiceHatch);
+    var serviceHatchScript = document.createElement("script");
+    serviceHatchScript.setAttribute("type", "text/javascript");
+    serviceHatchScript.textContent = 'function ' + serviceHatchId + '_callback(data){document.getElementById("' + serviceHatchId + '").textContent=JSON.stringify(data);};';
+    document.body.appendChild(serviceHatchScript);
+    
+    var jsonpRunner = document.createElement("script");
+    jsonpRunner.setAttribute("type", "text/javascript");
+    jsonpRunner.setAttribute("src", url + "?jsonp=" + serviceHatchId + "_callback");
+    jsonpRunner.addEventListener("load", function() {
+        var data = jsonpServiceHatch.text();
         callback(JSON.parse(data));
-        $("#jsonp_droplet").text("");
-        document.body.removeChild(script);
+        jsonpServiceHatch.remove();
+        document.body.removeChild(serviceHatchScript);
+        document.body.removeChild(jsonpRunner);
     }, false);
-    document.body.appendChild(script);
-};
+    
+    document.body.appendChild(jsonpRunner);
+}
 
 // v1.3: Simplistic JS stylesheet object to string renderer
 
@@ -105,6 +108,7 @@ var renderStylesheet = function (obj) {
 };
 
 // v1.4: Small cookie reader/writer
+
 var getCookie = function (name) {
     var cookiePrefix = name + "=";
     var cookieValue = "";
@@ -127,11 +131,60 @@ var setCookie = function (name, value) {
     document.cookie = name + "=" + encodeURIComponent(value) + "; expires=" + date.toUTCString();
 };
 
+// v1.5: Font feature test
+
+var fontAvailable = function (name, compareTo) {
+    var pattern = "rrrrrrrrrrrrrrr"; // This pattern can tell apart Arial and Helvetica
+    var containerDiv = jQuery("<div></div>");
+    containerDiv.css({
+        "font-family": "monospace",
+        "font-size": "16px",
+        position: "absolute",
+        top: 0,
+        left: 0
+    });
+    var fontDiv = jQuery("<div>" + pattern + "</div>");
+    fontDiv.css({
+        "font-family": name,
+        position: "absolute",
+        display: "none",
+        top: 0,
+        left: 0
+    });
+    containerDiv.append(fontDiv);
+    var compareFontDiv = jQuery("<div>" + pattern + "</div>");
+    compareFontDiv.css({
+        position: "absolute",
+        display: "none",
+        top: 0,
+        left: 0
+    });
+    if (compareTo !== undefined)
+        compareFontDiv.css("font-family", compareTo);
+    containerDiv.append(compareFontDiv);
+    jQuery("body").append(containerDiv);
+    var ret = (fontDiv.width() != compareFontDiv.width() || fontDiv.height() != compareFontDiv.height());
+    containerDiv.remove();
+    return ret;
+};
+
+// v1.5: Timer killer - Big thanks to AltPluzF4
+
+var stopAllTimers = function () {
+    var timeoutID = window.setTimeout(function() {}, 1); // Get the latest timer ID
+    for (var tID = 0; tID <= timeoutID; tID++) {
+        try { // Clear all timers, possibly iterating over already fired timers
+            window.clearTimeout(tID);
+        }
+        catch (err) {}
+    }
+};
+
 var GLaDOSEnhancerPlusInit = function () {
     
     // Initial setup
     
-    installJSONPDroplet();
+    /////stopAllTimers(); WiP
     
     // v1.1: Remove the top banner
     jQuery('#banner').remove();
@@ -139,6 +192,9 @@ var GLaDOSEnhancerPlusInit = function () {
     
     var isWebkit = jQuery.browser.webkit;
     var isOpera = jQuery.browser.opera;
+    
+    var hasHelvetica = fontAvailable("Helvetica", "Arial");
+    var helveticaOrArial = (hasHelvetica ? "Helvetica" : "Arial,sans-serif");
     
     var overallRate, gameRates, potatoRate, potatoCount;
     var lastOverallProgress, lastGameProgress = {}, lastPotatoTarget;
@@ -153,19 +209,19 @@ var GLaDOSEnhancerPlusInit = function () {
     
     var objStyleSheet = {
         gdep_overall_progress: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 16,
             "text-align": "right",
             color: "#4D4D4D",
             position: "absolute",
-            top: (isWebkit ? 441 : 442),
+            top: (hasHelvetica ? (isWebkit ? 441 : 442) : 439),
             left: 779,
             width: 75,
-            height: 15
+            height: (hasHelvetica ? 15 : 20)
         },
         gdep_game_progress: {
-            "font-family": "Helvetica,Arial,sans-serif",
-            "font-size": 11,
+            "font-family": helveticaOrArial,
+            "font-size": (hasHelvetica ? 11 : 12),
             "text-align": "right",
             color: "#FFFFFF",
             position: "absolute",
@@ -195,7 +251,7 @@ var GLaDOSEnhancerPlusInit = function () {
             height: 14
         },
         gdep_clock: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 32,
             "font-weight": "bold",
             color: "#4D4D4D",
@@ -209,7 +265,7 @@ var GLaDOSEnhancerPlusInit = function () {
             color: "#BDBDBD",
         },
         gdep_delta_rate: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 16,
             color: "#4D4D4D",
             position: "absolute",
@@ -219,7 +275,7 @@ var GLaDOSEnhancerPlusInit = function () {
             height: 15
         },
         gdep_update_label: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 10,
             "text-align": "right",
             color: "#888888",
@@ -230,7 +286,7 @@ var GLaDOSEnhancerPlusInit = function () {
             height: 10
         },
         gdep_update_timer: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 12,
             "font-weight": "bold",
             color: "#4D4D4D",
@@ -244,7 +300,7 @@ var GLaDOSEnhancerPlusInit = function () {
             "background-color": "#FDEB29"
         },
         gdep_potato_rate: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 18,
             "font-weight": "bold",
             color: "#4D4D4D",
@@ -254,7 +310,7 @@ var GLaDOSEnhancerPlusInit = function () {
             "line-height": 39
         },
         gdep_potato_timer: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 18,
             "font-weight": "bold",
             "text-align": "right",
@@ -266,7 +322,7 @@ var GLaDOSEnhancerPlusInit = function () {
             "line-height": 39
         },
         gdep_potato_target: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 18,
             "font-weight": "bold",
             border: "0",
@@ -279,7 +335,7 @@ var GLaDOSEnhancerPlusInit = function () {
             padding: 4
         },
         gdep_promo: {
-            "font-family": "Helvetica,Arial,sans-serif",
+            "font-family": helveticaOrArial,
             "font-size": 10,
             "text-align": "center",
             color: "#888888",
@@ -314,7 +370,7 @@ var GLaDOSEnhancerPlusInit = function () {
     });
     
     var secondClock = jQuery('<div class="gdep_clock"></div>');
-    secondClock.html("GDE+ 1.4");
+    secondClock.html("GDE+ 1.5");
     jQuery("#content").append(secondClock);
     
     var deltaAndRateDiv = jQuery('<div class="gdep_delta_rate"></div>');
@@ -337,7 +393,7 @@ var GLaDOSEnhancerPlusInit = function () {
     jQuery("#content").append(potatoTimerDiv);
     
     var promoDiv = jQuery('<div class="gdep_promo"></div>');
-    promoDiv.text("USING GLaDOS ENHANCER PLUS V1.4");
+    promoDiv.text("USING GLaDOS ENHANCER PLUS V1.4.90 EMERGENCY RELEASE");
     jQuery("#content").append(promoDiv);
     
     // Calculation functions
@@ -429,7 +485,7 @@ var GLaDOSEnhancerPlusInit = function () {
             setCookie("potato_milestone", targetValue);
         var potatoesRemaining = targetValue - potatoCount;
         
-        if (potatoRate == 0 || potatoesRemaining <= 0) {
+        if (potatoRate == 0) {
             potatoEndTime = 0;
             potatoTimerDiv.text("00:00:00 to");
         }
@@ -464,12 +520,13 @@ var GLaDOSEnhancerPlusInit = function () {
     potatoTargetInput.keyup(recalcPotatoTimer);
     jQuery("#content").append(potatoTargetInput);
     
+    potatoTargetInput.val(0); /// EMERGENCY
     potatoCount = getPotatoCount(); // Initial value
-    var potatoCookie = getCookie("potato_milestone"); // v1.4: Read from cookie
+    /*var potatoCookie = getCookie("potato_milestone"); // v1.4: Read from cookie
     if (potatoCookie == "")
         potatoTargetInput.val((parseInt(potatoCount/100000)+1) * 100000);
     else
-        potatoTargetInput.val(potatoCookie);
+        potatoTargetInput.val(potatoCookie);*/
     
     // Ajax Updater
     
@@ -499,7 +556,7 @@ var GLaDOSEnhancerPlusInit = function () {
         });
         
         // Update potato count
-        potatoCountDiv.html(wrapped.find("#potato_count").html());
+        //potatoCountDiv.html(wrapped.find("#potato_count").html());
         var newPotatoCount = getPotatoCount();
         
         // Update calculations
@@ -602,7 +659,7 @@ var GLaDOSEnhancerPlusInit = function () {
         window.setInterval(refreshClocks, 1000);
     };
     
-    useJSONPDroplet("http://www.p2k-network.org/py/glados_data.py", processGLaDOSdata);
+    runSandboxedJSONP("http://www.p2k-network.org/py/glados_data.py", processGLaDOSdata);
     
     // The original script doesn't do this correctly
     
