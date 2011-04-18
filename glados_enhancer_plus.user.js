@@ -4,7 +4,7 @@
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
 // @include http://aperturescience.com/glados@home/
-// @version 1.3
+// @version 1.4
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -102,6 +102,29 @@ var renderStylesheet = function (obj) {
         out += "}\n\n";
     });
     return out;
+};
+
+// v1.4: Small cookie reader/writer
+var getCookie = function (name) {
+    var cookiePrefix = name + "=";
+    var cookieValue = "";
+    if (document.cookie && document.cookie != "") {
+        var cookies = document.cookie.split(";");
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            if (cookie.substr(0, cookiePrefix.length) == cookiePrefix) {
+                cookieValue = decodeURIComponent(cookie.substr(cookiePrefix.length));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+};
+
+var setCookie = function (name, value) {
+    var date = new Date();
+    date.setTime(date.getTime() + (3 * 24 * 60 * 60 * 1000)); // Save for three days
+    document.cookie = name + "=" + encodeURIComponent(value) + "; expires=" + date.toUTCString();
 };
 
 var GLaDOSEnhancerPlusInit = function () {
@@ -288,7 +311,7 @@ var GLaDOSEnhancerPlusInit = function () {
     });
     
     var secondClock = jQuery('<div class="gdep_clock"></div>');
-    secondClock.html("GDE+ 1.3");
+    secondClock.html("GDE+ 1.4");
     jQuery("#content").append(secondClock);
     
     var deltaAndRateDiv = jQuery('<div class="gdep_delta_rate"></div>');
@@ -311,7 +334,7 @@ var GLaDOSEnhancerPlusInit = function () {
     jQuery("#content").append(potatoTimerDiv);
     
     var promoDiv = jQuery('<div class="gdep_promo"></div>');
-    promoDiv.text("USING GLaDOS ENHANCER PLUS V1.3");
+    promoDiv.text("USING GLaDOS ENHANCER PLUS V1.4");
     jQuery("#content").append(promoDiv);
     
     // Calculation functions
@@ -323,11 +346,14 @@ var GLaDOSEnhancerPlusInit = function () {
         // v1.3: Only update on changes and use the rate over a sliding window of one hour
         if (overallProgress != lastOverallProgress) {
             var originalTimeRemaining = parseTime(jQuery("#console_clock").text());
-            var overallTimeRemaining = originalTimeRemaining;
-            projectedEndTime = timeCurrent + parseTime(jQuery("#clock").text());
+            var projectedTimeRemaining = parseTime(jQuery("#clock").text());
+            var overallTimeRemaining = projectedTimeRemaining;
+            projectedEndTime = timeCurrent + projectedTimeRemaining;
             
             if (overallRate != 0) // No no no, we won't divide by zero!
-                overallTimeRemaining = parseInt((1.0-overallProgress)*60 / overallRate);
+                overallTimeRemaining = parseInt((1.0-overallProgress)*3600 / overallRate);
+            if (overallTimeRemaining > projectedTimeRemaining)
+                overallTimeRemaining = projectedTimeRemaining;
             
             var delta = overallTimeRemaining - originalTimeRemaining;
             
@@ -364,7 +390,7 @@ var GLaDOSEnhancerPlusInit = function () {
                     if (gameRate == 0) // No no no, we won't divide by zero!
                         gameEndTimes[gameId] = projectedEndTime + 3600;
                     else
-                        gameEndTimes[gameId] = parseInt((1.0-gameProgress)*60 / gameRate) + timeCurrent;
+                        gameEndTimes[gameId] = parseInt((1.0-gameProgress)*3600 / gameRate) + timeCurrent;
                 }
                 lastGameProgress[gameId] = gameProgress;
             }
@@ -385,11 +411,13 @@ var GLaDOSEnhancerPlusInit = function () {
     
     var potatoTargetInput = jQuery('<input type="text" class="gdep_potato_target" />');
     
-    var recalcPotatoTimer = function () {
+    var recalcPotatoTimer = function (evt) {
         var targetValue = parseInt(potatoTargetInput.val());
         if (targetValue == lastPotatoTarget)
             return;
         lastPotatoTarget = targetValue;
+        if (evt !== undefined) // v1.4: Store to cookie
+            setCookie("potato_milestone", targetValue);
         var potatoesRemaining = targetValue - potatoCount;
         
         if (potatoRate == 0 || potatoesRemaining <= 0) {
@@ -398,7 +426,7 @@ var GLaDOSEnhancerPlusInit = function () {
         }
         else {
             var timeCurrent = Math.round(new Date().getTime() / 1000);
-            var secsRemaining = parseInt(potatoesRemaining*60 / potatoRate);
+            var secsRemaining = parseInt(potatoesRemaining*3600 / potatoRate);
             potatoEndTime = secsRemaining + timeCurrent;
             if (potatoEndTime > projectedEndTime) {
                 potatoTimerDiv.text("too long to");
@@ -410,15 +438,33 @@ var GLaDOSEnhancerPlusInit = function () {
         }
     };
     
+    // v1.4: Filter keyboard input
+    potatoTargetInput.keydown(function (evt) {
+        if (
+            (!evt.shiftKey && evt.which >= 48 && evt.which <= 57) || // Normal numbers
+            (!evt.shiftKey && evt.which >= 96 && evt.which <= 105) || // Numpad
+            (evt.which >= 37 && evt.which <= 40) || // Arrows
+            evt.which == 8 || evt.which == 46 || evt.which == 16 || // Backspace, Delete, Shift
+            evt.which == 35 || evt.which == 36 // Home, End - what would be the world without a home and the end :)
+            )
+            return;
+        
+        evt.preventDefault();
+        evt.stopPropagation();
+    });
     potatoTargetInput.keyup(recalcPotatoTimer);
     jQuery("#content").append(potatoTargetInput);
     
     potatoCount = getPotatoCount(); // Initial value
-    potatoTargetInput.val((parseInt(potatoCount/100000)+1) * 100000);
+    var potatoCookie = getCookie("potato_milestone"); // v1.4: Read from cookie
+    if (potatoCookie == "")
+        potatoTargetInput.val((parseInt(potatoCount/100000)+1) * 100000);
+    else
+        potatoTargetInput.val(potatoCookie);
     
     // Ajax Updater
     
-    var nextUpdateCounter = 30;
+    var nextUpdateCounter = 60;
     
     var processAjaxUpdate = function (data) {
         // Wrap whole document
@@ -459,7 +505,7 @@ var GLaDOSEnhancerPlusInit = function () {
         // v1.2: Set the cached community focus
         setCurrentCommunityFocus();
         
-        nextUpdateCounter = 30;
+        nextUpdateCounter = 60;
     };
     
     var runAjaxUpdate = function () {

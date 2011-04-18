@@ -97,11 +97,11 @@ def deriveCurrentRates(samples):
         timeEnd = lastSample["timestamp"]
         timeFrame = timeEnd - timeStart
         
-        ret["overallRate"] = round((lastSample["overallProgress"]-firstSample["overallProgress"]) * 60 / timeFrame, 8)
+        ret["overallRate"] = round((lastSample["overallProgress"]-firstSample["overallProgress"]) * 3600 / timeFrame, 8)
         for gameId, firstValue in firstSample["gameProgress"].iteritems():
             lastValue = lastSample["gameProgress"][gameId]
-            ret["gameRates"][gameId] = round((lastValue-firstValue) * 60 / timeFrame, 8)
-        ret["potatoRate"] = round((lastSample["potatoCount"]-firstSample["potatoCount"]) * 60 / timeFrame, 8)
+            ret["gameRates"][gameId] = round((lastValue-firstValue) * 3600 / timeFrame, 8)
+        ret["potatoRate"] = round((lastSample["potatoCount"]-firstSample["potatoCount"]) * 3600 / timeFrame, 8)
     
     return ret
 
