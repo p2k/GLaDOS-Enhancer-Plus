@@ -4,7 +4,7 @@
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
 // @include http://aperturescience.com/glados@home/
-// @version 1.4
+// @version 1.4.1
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -205,6 +205,9 @@ var GLaDOSEnhancerPlusInit = function () {
             width: 160,
             height: 33
         },
+        gdep_clock_stalled: {
+            color: "#BDBDBD",
+        },
         gdep_delta_rate: {
             "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 16,
@@ -352,8 +355,14 @@ var GLaDOSEnhancerPlusInit = function () {
             
             if (overallRate != 0) // No no no, we won't divide by zero!
                 overallTimeRemaining = parseInt((1.0-overallProgress)*3600 / overallRate);
-            if (overallTimeRemaining > projectedTimeRemaining)
+            
+            if (overallTimeRemaining > projectedTimeRemaining) {
                 overallTimeRemaining = projectedTimeRemaining;
+                secondClock.addClass("gdep_clock_stalled");
+            }
+            else {
+                secondClock.removeClass("gdep_clock_stalled");
+            }
             
             var delta = overallTimeRemaining - originalTimeRemaining;
             
