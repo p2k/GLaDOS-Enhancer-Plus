@@ -21,7 +21,7 @@ For the first release, the two scripts developed by the initiators will be merge
 Features
 --------
 
-- Updates all displayed bars, text and values every 30 seconds (via Ajax requests to the same site)
+- Updates all displayed bars, text and values every 60 seconds (via Ajax requests to the same site)
 - Shows the percentage done in decimal numbers within the progress bars
 - Does not modify the original countdown and does not intervene with Valve's JavaScript code
 - Instead, shows a second countdown next to it, based on the percentage done and the time passed with linear progression
