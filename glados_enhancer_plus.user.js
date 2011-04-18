@@ -4,7 +4,7 @@
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
 // @include http://aperturescience.com/glados@home/
-// @version 1.4.90
+// @version 1.4.91
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -214,21 +214,24 @@ var GLaDOSEnhancerPlusInit = function () {
             "text-align": "right",
             color: "#4D4D4D",
             position: "absolute",
-            top: (hasHelvetica ? (isWebkit ? 441 : 442) : 439),
+            top: 433,
             left: 779,
             width: 75,
-            height: (hasHelvetica ? 15 : 20)
+            "line-height": 34,
+            "text-shadow": "1px 1px #FFFFFF"
         },
         gdep_game_progress: {
             "font-family": helveticaOrArial,
             "font-size": (hasHelvetica ? 11 : 12),
+            "font-weight": "bold",
             "text-align": "right",
             color: "#FFFFFF",
             position: "absolute",
-            top: (isWebkit ? 2 : (isOpera ? 4 : 3)),
+            top: (isOpera ? 1 : -1),
             left: 563,
             width: 50,
-            height: 11
+            "line-height": 18,
+            "text-shadow": "1px 1px #000000"
         },
         gdep_game_rate: {
             "font-family": "verdana,sans-serif",
