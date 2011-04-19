@@ -4,7 +4,7 @@
 // @description Collaborative countdown aid for GLaDOS@Home
 // @include http://www.aperturescience.com/glados@home/
 // @include http://aperturescience.com/glados@home/
-// @version 1.4.91
+// @version 1.5
 // ==/UserScript==
 
 // Copyright (c) 2011, Aubron Wood
@@ -132,9 +132,12 @@ var setCookie = function (name, value) {
 };
 
 // v1.5: Font feature test
+// This test is useless for Arial and Helvetica as the latter is simply
+// rendered as Arial on systems without that font. This makes the function
+// for this script.
 
 var fontAvailable = function (name, compareTo) {
-    var pattern = "rrrrrrrrrrrrrrr"; // This pattern can tell apart Arial and Helvetica
+    var pattern = "mmmmmml";
     var containerDiv = jQuery("<div></div>");
     containerDiv.css({
         "font-family": "monospace",
@@ -169,6 +172,7 @@ var fontAvailable = function (name, compareTo) {
 };
 
 // v1.5: Timer killer - Big thanks to AltPluzF4
+// I might need this for other things, but it won't come into effect in this script.
 
 var stopAllTimers = function () {
     var timeoutID = window.setTimeout(function() {}, 1); // Get the latest timer ID
@@ -184,17 +188,12 @@ var GLaDOSEnhancerPlusInit = function () {
     
     // Initial setup
     
-    /////stopAllTimers(); WiP
-    
     // v1.1: Remove the top banner
     jQuery('#banner').remove();
 	jQuery('#content').css('margin-top','-3px');
     
     var isWebkit = jQuery.browser.webkit;
     var isOpera = jQuery.browser.opera;
-    
-    var hasHelvetica = fontAvailable("Helvetica", "Arial");
-    var helveticaOrArial = (hasHelvetica ? "Helvetica" : "Arial,sans-serif");
     
     var overallRate, gameRates, potatoRate, potatoCount;
     var lastOverallProgress, lastGameProgress = {}, lastPotatoTarget;
@@ -209,7 +208,7 @@ var GLaDOSEnhancerPlusInit = function () {
     
     var objStyleSheet = {
         gdep_overall_progress: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 16,
             "text-align": "right",
             color: "#4D4D4D",
@@ -221,8 +220,8 @@ var GLaDOSEnhancerPlusInit = function () {
             "text-shadow": "1px 1px #FFFFFF"
         },
         gdep_game_progress: {
-            "font-family": helveticaOrArial,
-            "font-size": (hasHelvetica ? 11 : 12),
+            "font-family": "Helvetica,Arial,sans-serif",
+            "font-size": 12,
             "font-weight": "bold",
             "text-align": "right",
             color: "#FFFFFF",
@@ -253,8 +252,11 @@ var GLaDOSEnhancerPlusInit = function () {
             width: 84,
             height: 14
         },
+        gdep_game_eta_stalled: {
+            color: "#FF0000"
+        },
         gdep_clock: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 32,
             "font-weight": "bold",
             color: "#4D4D4D",
@@ -268,7 +270,7 @@ var GLaDOSEnhancerPlusInit = function () {
             color: "#BDBDBD",
         },
         gdep_delta_rate: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 16,
             color: "#4D4D4D",
             position: "absolute",
@@ -278,7 +280,7 @@ var GLaDOSEnhancerPlusInit = function () {
             height: 15
         },
         gdep_update_label: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 10,
             "text-align": "right",
             color: "#888888",
@@ -289,7 +291,7 @@ var GLaDOSEnhancerPlusInit = function () {
             height: 10
         },
         gdep_update_timer: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 12,
             "font-weight": "bold",
             color: "#4D4D4D",
@@ -303,7 +305,7 @@ var GLaDOSEnhancerPlusInit = function () {
             "background-color": "#FDEB29"
         },
         gdep_potato_rate: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 18,
             "font-weight": "bold",
             color: "#4D4D4D",
@@ -313,7 +315,7 @@ var GLaDOSEnhancerPlusInit = function () {
             "line-height": 39
         },
         gdep_potato_timer: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 18,
             "font-weight": "bold",
             "text-align": "right",
@@ -325,7 +327,7 @@ var GLaDOSEnhancerPlusInit = function () {
             "line-height": 39
         },
         gdep_potato_target: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 18,
             "font-weight": "bold",
             border: "0",
@@ -338,7 +340,7 @@ var GLaDOSEnhancerPlusInit = function () {
             padding: 4
         },
         gdep_promo: {
-            "font-family": helveticaOrArial,
+            "font-family": "Helvetica,Arial,sans-serif",
             "font-size": 10,
             "text-align": "center",
             color: "#888888",
@@ -396,7 +398,7 @@ var GLaDOSEnhancerPlusInit = function () {
     jQuery("#content").append(potatoTimerDiv);
     
     var promoDiv = jQuery('<div class="gdep_promo"></div>');
-    promoDiv.text("USING GLaDOS ENHANCER PLUS V1.4.90 EMERGENCY RELEASE");
+    promoDiv.text("USING GLaDOS ENHANCER PLUS V1.5");
     jQuery("#content").append(promoDiv);
     
     // Calculation functions
@@ -495,13 +497,19 @@ var GLaDOSEnhancerPlusInit = function () {
         else {
             var timeCurrent = Math.round(new Date().getTime() / 1000);
             var secsRemaining = parseInt(potatoesRemaining*3600 / potatoRate);
-            potatoEndTime = secsRemaining + timeCurrent;
-            if (potatoEndTime > projectedEndTime) {
-                potatoTimerDiv.text("too long to");
+            if (secsRemaining < 0) {
                 potatoEndTime = 0;
+                potatoTimerDiv.text("00:00:00 to");
             }
             else {
-                potatoTimerDiv.text(formatTime(secsRemaining) + " to");
+                potatoEndTime = secsRemaining + timeCurrent;
+                if (potatoEndTime > projectedEndTime) {
+                    potatoTimerDiv.text("too long to");
+                    potatoEndTime = 0;
+                }
+                else {
+                    potatoTimerDiv.text(formatTime(secsRemaining) + " to");
+                }
             }
         }
     };
@@ -523,13 +531,12 @@ var GLaDOSEnhancerPlusInit = function () {
     potatoTargetInput.keyup(recalcPotatoTimer);
     jQuery("#content").append(potatoTargetInput);
     
-    potatoTargetInput.val(0); /// EMERGENCY
     potatoCount = getPotatoCount(); // Initial value
-    /*var potatoCookie = getCookie("potato_milestone"); // v1.4: Read from cookie
+    var potatoCookie = getCookie("potato_milestone"); // v1.4: Read from cookie
     if (potatoCookie == "")
-        potatoTargetInput.val((parseInt(potatoCount/100000)+1) * 100000);
+        potatoTargetInput.val(0); // v1.5
     else
-        potatoTargetInput.val(potatoCookie);*/
+        potatoTargetInput.val(potatoCookie);
     
     // Ajax Updater
     
@@ -545,7 +552,7 @@ var GLaDOSEnhancerPlusInit = function () {
         
         // Update console
         jQuery("#console").html(wrapped.find("#console").html());
-        jQuery("#console_clock").attr("style", "");
+        jQuery("#console").find("span").css("display", "");
         jQuery("#console").scrollTop(10000);
         
         // Update games
@@ -559,7 +566,8 @@ var GLaDOSEnhancerPlusInit = function () {
         });
         
         // Update potato count
-        //potatoCountDiv.html(wrapped.find("#potato_count").html());
+        potatoCountDiv.html(wrapped.find("#potato_count").html());
+        potatoCountDiv.find("span").css("display", "");
         var newPotatoCount = getPotatoCount();
         
         // Update calculations
@@ -579,7 +587,7 @@ var GLaDOSEnhancerPlusInit = function () {
     
     var runAjaxUpdate = function () {
         jQuery.ajax({
-            url: "http://www.aperturescience.com/glados@home/",
+            url: document.location, // v1.5: Fixes Ajax issues if site wasn't opened with the same subdomain - thanks to AltPluzF4
             success: processAjaxUpdate,
             dataType: "html"
         });
@@ -590,6 +598,9 @@ var GLaDOSEnhancerPlusInit = function () {
     var refreshClocks = function () {
         var timestamp = Math.round(new Date().getTime() / 1000);
         var secsRemaining = overallEndTime - timestamp;
+        if (secsRemaining < 0)
+            secsRemaining = 0;
+        
         secondClock.text("/ " + formatTime(secsRemaining));
         
         jQuery("#game_rows").children(".game_row").each(function (index, elt) {
@@ -606,7 +617,7 @@ var GLaDOSEnhancerPlusInit = function () {
                 gameSecsRemaining = 0;
             
             if (gameEndTime > projectedEndTime)
-                jQuery("#game_eta_" + gameId).html("ETA: <b>STALLED</b>");
+                jQuery("#game_eta_" + gameId).html('ETA: <span class="gdep_game_eta_stalled">' + formatTime(gameSecsRemaining) + '</span>');
             else
                 jQuery("#game_eta_" + gameId).text("ETA: " + formatTime(gameSecsRemaining));
         });
@@ -652,6 +663,12 @@ var GLaDOSEnhancerPlusInit = function () {
         overallRate = data.overallRate;
         gameRates = data.gameRates;
         potatoRate = data.potatoRate;
+        
+        // 1.5: Check for negative rates
+        if (potatoRate < 0 && potatoCount < parseInt(potatoTargetInput.val())) {
+            potatoTargetInput.val(0)
+            setCookie("potato_milestone", 0);
+        }
         
         // Initiation here
         runCalculations();

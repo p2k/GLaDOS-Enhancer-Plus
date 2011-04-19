@@ -31,8 +31,9 @@ Features
 - v1.2: Shows estimated times for each game
 - v1.2.2: Introduced some fixes to increase compatibility across users, browsers and operating systems
 - v1.3: Better estimated values over a sliding window of one hour
-- v1.3: Potato milestone timer with editable target amount **NEW in v1.4:** which is preserved between reloads
-- **NEW in v1.4:** Fixed an issue in the calculations (the script previously showed rates per minute rather than per hour, sorry)
+- v1.3: Potato milestone timer with editable target amount (v1.4:) which is preserved between reloads
+- v1.4: Fixed an issue in the calculations (the script previously showed rates per minute rather than per hour, sorry)
+- v1.5: Clean and reusable code for JavaScript developers
 
 Installation Instructions
 -------------------------
@@ -70,4 +71,4 @@ Notes on the game timers
 
 The timers will stop on 00:00:00 (i.e. they won't show negative values).
 
-Also, if a timer is larger than the actual release time it will read **STALLED**.
+Also, if a timer is larger than the actual release time it's remaining time will be colored red.
