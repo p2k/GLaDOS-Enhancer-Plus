@@ -12,7 +12,7 @@ This script was a collaborative effort for making a better countdown aid which d
 
 The project has been initiated by Aubron and p2k, both participators in the `Valve ARG IRC Channel <http://valvearg.com/wiki/IRC>`_. Due to its nature, this project was quite short-lived and is no longer of any use by itself since the end of the ARG.
 
-See some screenshots while the project was active `over here <https://github.com/p2k/GLaDOS-Enhancer-Plus/wiki/Last-Screenshot>`_ and `here https://github.com/p2k/GLaDOS-Enhancer-Plus/wiki/Older-Screenshots>`_.
+See some screenshots while the project was active `over here <https://github.com/p2k/GLaDOS-Enhancer-Plus/wiki/Last-Screenshot>`_ and `here <https://github.com/p2k/GLaDOS-Enhancer-Plus/wiki/Older-Screenshots>`_.
 
 You can still `get the final version here <https://github.com/p2k/GLaDOS-Enhancer-Plus/raw/master/glados_enhancer_plus.user.js>`_, if you like.
 
@@ -44,5 +44,8 @@ Code Snippets
 
 The project has produced many by-products in its making which are now free at your disposal. Find them `in the wiki <https://github.com/p2k/GLaDOS-Enhancer-Plus/wiki/Code-Snippets>`_.
 
-_There's a hole in the sky, through which things can fly..._
+Epilogue
+--------
+
+*There's a hole in the sky, through which things can fly...*
 
